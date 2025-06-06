@@ -4,6 +4,7 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import time
 from cv2 import VideoCapture, cvtColor, COLOR_BGR2RGB, resize, CAP_PROP_FPS
+import json
 
 
 class GifsFrame:
@@ -15,6 +16,8 @@ class GifsFrame:
         ]
         self.current_gif = None
         self.running = True
+        self.stats_file = os.path.join(folder_path, "media_stats.json")
+        self.play_counts = self.load_stats()
 
         # Initialize Tkinter window
         self.root = tk.Tk()
@@ -27,6 +30,30 @@ class GifsFrame:
         self.load_random_frames()
         self.display_frames()
 
+    def load_stats(self):
+        if os.path.exists(self.stats_file):
+            try:
+                with open(self.stats_file, "r", encoding="utf-8") as f:
+                    stats = json.load(f)
+                # Ensure all current files are present
+                for f in self.gif_files:
+                    if f not in stats:
+                        stats[f] = 0
+                # Remove stats for files that no longer exist
+                stats = {k: v for k, v in stats.items() if k in self.gif_files}
+                return stats
+            except Exception as e:
+                print(f"Error loading stats: {e}")
+        # Default: all zero
+        return {f: 0 for f in self.gif_files}
+
+    def save_stats(self):
+        try:
+            with open(self.stats_file, "w", encoding="utf-8") as f:
+                json.dump(self.play_counts, f, indent=2)
+        except Exception as e:
+            print(f"Error saving stats: {e}")
+
     def load_gif(self, gif_path):
         self.current_gif = Image.open(gif_path)
         self.frames = []
@@ -35,11 +62,12 @@ class GifsFrame:
         try:
             while True:
                 frame = self.current_gif.copy()
-                # Make frame square by padding with white if needed
+                # Make frame square by padding with yellow if needed
                 orig_w, orig_h = frame.size
                 if orig_w != orig_h:
                     side = max(orig_w, orig_h)
-                    new_frame = Image.new("RGBA", (side, side), (255, 255, 255, 255))
+                    # Nice yellow RGBA: (255, 221, 51, 255)
+                    new_frame = Image.new("RGBA", (side, side), (255, 221, 51, 255))
                     new_frame.paste(frame, ((side - orig_w) // 2, (side - orig_h) // 2))
                     frame = new_frame
                 frame = frame.resize((width, height), Image.LANCZOS)
@@ -54,8 +82,8 @@ class GifsFrame:
             pass  # End of GIF frames
 
     def load_mp4(self, video_path):
+        self.video_path = video_path  # Store for reload
         self.video_capture = VideoCapture(video_path)
-        self.video_capture.filename = video_path  # Store for reload
         self.frames = []
         self.durations = []
         fps = self.video_capture.get(CAP_PROP_FPS)  # Retrieve FPS of the video
@@ -68,13 +96,16 @@ class GifsFrame:
             if not ret:
                 break
             frame = cvtColor(frame, COLOR_BGR2RGB)
-            # Make frame square by padding with white if needed
+            # Make frame square by padding with yellow if needed
             orig_h, orig_w, _ = frame.shape
             if orig_w != orig_h:
                 side = max(orig_w, orig_h)
                 import numpy as np
 
-                square_frame = np.ones((side, side, 3), dtype=frame.dtype) * 255
+                # Nice yellow RGB: (255, 221, 51)
+                square_frame = np.ones((side, side, 3), dtype=frame.dtype) * np.array(
+                    [255, 221, 51], dtype=frame.dtype
+                )
                 y_offset = (side - orig_h) // 2
                 x_offset = (side - orig_w) // 2
                 square_frame[
@@ -88,13 +119,27 @@ class GifsFrame:
         self.video_capture.release()
 
     def load_random_frames(self):
-        print("Loading random media...")
-        print(self.gif_files)
-        media_path = os.path.join(self.folder_path, random.choice(self.gif_files))
-        print(f"Selected media: {media_path}")
+        # Shuffle the list for better randomness and avoid immediate repeats
+        if not hasattr(self, "last_media"):
+            self.last_media = None
+        available_files = self.gif_files.copy()
+        if self.last_media in available_files and len(available_files) > 1:
+            available_files.remove(self.last_media)
+        random.shuffle(available_files)
+        media_path = os.path.join(self.folder_path, available_files[0])
+        self.last_media = available_files[0]
+        self.play_counts[self.last_media] += 1  # Increment play count
+        self.save_stats()
+        print(f"\n[Random Media Selection]")
+        print(f"Available media files: {len(self.gif_files)}")
+        print(
+            f"Selected: {os.path.basename(media_path)} (Played {self.play_counts[self.last_media]} times)"
+        )
         if media_path.endswith((".gif", ".GIF")):
+            print("Loading GIF...")
             self.load_gif(media_path)
         elif media_path.endswith(".mp4"):
+            print("Loading MP4 video...")
             self.load_mp4(media_path)
 
     def display_frames(self):
@@ -124,9 +169,20 @@ class GifsFrame:
         self.running = False
         self.root.destroy()
 
+    def reload_current_media(self):
+        # Reload the current gif or mp4 with the new window size
+        if hasattr(self, "current_gif") and self.current_gif:
+            self.load_gif(self.current_gif.filename)
+        elif hasattr(self, "video_path") and self.video_path:
+            self.load_mp4(self.video_path)
+
 
 if __name__ == "__main__":
-    folder_path = r"gifs"  # Replace with the path to your folder containing media files
-    interval = 5  # Time in seconds before switching to the next media
+    folder_path = (
+        r"mygifs"  # Replace with the path to your folder containing media files
+    )
+    interval = 15  # Time in seconds before switching to the next media
     player = GifsFrame(folder_path, interval)
     player.start()
+
+# 11 / 3 / 25
