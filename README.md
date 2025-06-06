@@ -16,4 +16,3 @@ This project was made to display the gifs and videos that my beloved girlfriend 
 ## Screenshot
 ![Screenshot](screenshot.png)
 
-*If you don't see the screenshot above, please add a file named `screenshot.png` to the project directory.*
