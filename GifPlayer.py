@@ -30,29 +30,20 @@ class GifsFrame:
         self.load_random_frames()
         self.display_frames()
 
-    def load_stats(self):
-        if os.path.exists(self.stats_file):
-            try:
-                with open(self.stats_file, "r", encoding="utf-8") as f:
-                    stats = json.load(f)
-                # Ensure all current files are present
-                for f in self.gif_files:
-                    if f not in stats:
-                        stats[f] = 0
-                # Remove stats for files that no longer exist
-                stats = {k: v for k, v in stats.items() if k in self.gif_files}
-                return stats
-            except Exception as e:
-                print(f"Error loading stats: {e}")
-        # Default: all zero
-        return {f: 0 for f in self.gif_files}
-
-    def save_stats(self):
+    def save_stats(self, stats=None):
+        if stats is None:
+            stats = self.play_counts
         try:
             with open(self.stats_file, "w", encoding="utf-8") as f:
-                json.dump(self.play_counts, f, indent=2)
+                json.dump(stats, f, indent=2)
         except Exception as e:
             print(f"Error saving stats: {e}")
+
+    def load_stats(self):
+        # Always recreate stats from zero
+        stats = {f: 0 for f in self.gif_files}
+        self.save_stats(stats)
+        return stats
 
     def load_gif(self, gif_path):
         self.current_gif = Image.open(gif_path)
@@ -185,4 +176,4 @@ if __name__ == "__main__":
     player = GifsFrame(folder_path, interval)
     player.start()
 
-# 11 / 3 / 25
+# 12 12 24
