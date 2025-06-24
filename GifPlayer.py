@@ -22,9 +22,9 @@ class GifsFrame:
         # Initialize Tkinter window
         self.root = tk.Tk()
         self.root.title("Random Media Player")
-        self.root.geometry("200x200")  # Set initial window size
+        self.root.geometry("250x250")  # Set initial window size
         self.root.attributes("-topmost", True)  # Always stay on top
-        self.root.resizable(False, False)  # Disable window resizing
+        self.root.resizable(True, True)  # Disable window resizing
         self.label = tk.Label(self.root)
         self.label.pack(fill=tk.BOTH, expand=True)
         self.load_random_frames()
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     folder_path = (
         r"mygifs"  # Replace with the path to your folder containing media files
     )
-    interval = 15  # Time in seconds before switching to the next media
+    interval = 30  # Time in seconds before switching to the next media
     player = GifsFrame(folder_path, interval)
     player.start()
 
