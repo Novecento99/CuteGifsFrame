@@ -182,7 +182,7 @@ if __name__ == "__main__":
     folder_path = (
         r"mygifs"  # Replace with the path to your folder containing media files
     )
-    interval = 5  # Time in seconds before switching to the next media
+    interval = 30  # Time in seconds before switching to the next media
     player = GifsFrame(folder_path, interval)
     player.start()
 
