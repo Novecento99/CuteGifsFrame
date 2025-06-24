@@ -49,20 +49,26 @@ class GifsFrame:
         self.current_gif = Image.open(gif_path)
         self.frames = []
         self.durations = []  # Store frame durations
-        width, height = 200, 200  # Fixed size
+
+        width, height = (
+            self.root.winfo_width(),
+            self.root.winfo_height(),
+        )  # Get current window size
+        print(width, height)
         try:
             while True:
                 frame = self.current_gif.copy()
-                # Make frame square by padding with yellow if needed
                 orig_w, orig_h = frame.size
-                if orig_w != orig_h:
-                    side = max(orig_w, orig_h)
-                    # Nice yellow RGBA: (255, 221, 51, 255)
-                    new_frame = Image.new("RGBA", (side, side), (255, 221, 51, 255))
-                    new_frame.paste(frame, ((side - orig_w) // 2, (side - orig_h) // 2))
-                    frame = new_frame
-                frame = frame.resize((width, height), Image.LANCZOS)
-                frame = ImageTk.PhotoImage(frame)
+                # Calculate scale to fit inside window while preserving aspect ratio
+                scale = min(width / orig_w, height / orig_h)
+                new_w, new_h = int(orig_w * scale), int(orig_h * scale)
+                frame = frame.resize((new_w, new_h), Image.LANCZOS)
+                # Create yellow background and paste centered
+                bg = Image.new("RGBA", (width, height), (255, 221, 51, 255))
+                x = (width - new_w) // 2
+                y = (height - new_h) // 2
+                bg.paste(frame, (x, y), frame if frame.mode == "RGBA" else None)
+                frame = ImageTk.PhotoImage(bg)
                 self.frames.append(frame)
                 duration = self.current_gif.info.get(
                     "duration", 40
@@ -81,30 +87,33 @@ class GifsFrame:
         frame_duration = (
             1 / fps if fps > 0 else 1 / 30
         )  # Default to 30 FPS if FPS is invalid
-        width, height = 200, 200  # Fixed size
+
+        width, height = self.root.winfo_width(), self.root.winfo_height()
+        print(width, height)
         while True:
             ret, frame = self.video_capture.read()
             if not ret:
                 break
             frame = cvtColor(frame, COLOR_BGR2RGB)
-            # Make frame square by padding with yellow if needed
             orig_h, orig_w, _ = frame.shape
-            if orig_w != orig_h:
-                side = max(orig_w, orig_h)
-                import numpy as np
+            # Calculate scale to fit inside window while preserving aspect ratio
+            scale = min(width / orig_w, height / orig_h)
+            new_w, new_h = int(orig_w * scale), int(orig_h * scale)
+            import numpy as np
 
-                # Nice yellow RGB: (255, 221, 51)
-                square_frame = np.ones((side, side, 3), dtype=frame.dtype) * np.array(
-                    [255, 221, 51], dtype=frame.dtype
-                )
-                y_offset = (side - orig_h) // 2
-                x_offset = (side - orig_w) // 2
-                square_frame[
-                    y_offset : y_offset + orig_h, x_offset : x_offset + orig_w, :
-                ] = frame
-                frame = square_frame
-            frame = resize(frame, (width, height))  # Resize frame to fit window
-            frame = ImageTk.PhotoImage(Image.fromarray(frame))
+            # Create yellow background
+            bg = np.ones((height, width, 3), dtype=frame.dtype) * np.array(
+                [255, 221, 51], dtype=frame.dtype
+            )
+            # Resize frame
+            from cv2 import resize as cv2_resize
+
+            resized_frame = cv2_resize(frame, (new_w, new_h))
+            # Center the frame
+            y = (height - new_h) // 2
+            x = (width - new_w) // 2
+            bg[y : y + new_h, x : x + new_w, :] = resized_frame
+            frame = ImageTk.PhotoImage(Image.fromarray(bg.astype("uint8")))
             self.frames.append(frame)
             self.durations.append(frame_duration)  # Use the calculated frame duration
         self.video_capture.release()
@@ -126,6 +135,7 @@ class GifsFrame:
         print(
             f"Selected: {os.path.basename(media_path)} (Played {self.play_counts[self.last_media]} times)"
         )
+        self.root.update_idletasks()
         if media_path.endswith((".gif", ".GIF")):
             print("Loading GIF...")
             self.load_gif(media_path)
@@ -172,7 +182,7 @@ if __name__ == "__main__":
     folder_path = (
         r"mygifs"  # Replace with the path to your folder containing media files
     )
-    interval = 30  # Time in seconds before switching to the next media
+    interval = 5  # Time in seconds before switching to the next media
     player = GifsFrame(folder_path, interval)
     player.start()
 
