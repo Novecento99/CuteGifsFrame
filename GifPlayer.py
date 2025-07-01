@@ -5,6 +5,9 @@ from PIL import Image, ImageTk
 import time
 from cv2 import VideoCapture, cvtColor, COLOR_BGR2RGB, resize, CAP_PROP_FPS
 import json
+import pyautogui  # <-- Use pyautogui instead of pyinput
+
+pyautogui.FAILSAFE = False  # Disable PyAutoGUI fail-safe
 
 
 class GifsFrame:
@@ -64,7 +67,7 @@ class GifsFrame:
                 new_w, new_h = int(orig_w * scale), int(orig_h * scale)
                 frame = frame.resize((new_w, new_h), Image.LANCZOS)
                 # Create yellow background and paste centered
-                bg = Image.new("RGBA", (width, height), (255, 221, 51, 255))
+                bg = Image.new("RGB", (width, height), (240, 240, 240))
                 x = (width - new_w) // 2
                 y = (height - new_h) // 2
                 bg.paste(frame, (x, y), frame if frame.mode == "RGBA" else None)
@@ -103,7 +106,7 @@ class GifsFrame:
 
             # Create yellow background
             bg = np.ones((height, width, 3), dtype=frame.dtype) * np.array(
-                [255, 221, 51], dtype=frame.dtype
+                [240, 240, 240], dtype=frame.dtype
             )
             # Resize frame
             from cv2 import resize as cv2_resize
@@ -147,6 +150,13 @@ class GifsFrame:
         def update_media():
             if self.running:
                 self.load_random_frames()
+                # Press "Scroll Lock" key to prevent focus loss
+                # check if time is past 7 pm
+                current_time = time.localtime()
+                if current_time.tm_hour <= 19:  # 7 PM
+                    print("oki doki")
+                    pyautogui.press("scrolllock")
+                    pyautogui.press("scrolllock")
                 self.root.after(
                     self.interval * 1000, update_media
                 )  # Schedule next update
@@ -182,7 +192,7 @@ if __name__ == "__main__":
     folder_path = (
         r"mygifs"  # Replace with the path to your folder containing media files
     )
-    interval = 30  # Time in seconds before switching to the next media
+    interval = 60  # Time in seconds before switching to the next media
     player = GifsFrame(folder_path, interval)
     player.start()
 
