@@ -24,12 +24,15 @@ class GifsFrame:
 
         # Initialize Tkinter window
         self.root = tk.Tk()
-        self.root.title("Random Media Player")
+        self.root.title("Digital Frame")
         self.root.geometry("250x250")  # Set initial window size
         self.root.attributes("-topmost", True)  # Always stay on top
         self.root.resizable(True, True)  # Disable window resizing
         self.label = tk.Label(self.root)
         self.label.pack(fill=tk.BOTH, expand=True)
+        self._resize_after_id = None  # For debouncing resize events
+        self.root.bind("<Configure>", self.on_resize)
+        self.current_frame_index = 0  # Track current frame for resizing
         self.load_random_frames()
         self.display_frames()
 
@@ -47,6 +50,12 @@ class GifsFrame:
         stats = {f: 0 for f in self.gif_files}
         self.save_stats(stats)
         return stats
+
+    def on_resize(self, event):
+        # Debounce rapid resize events
+        if self._resize_after_id:
+            self.root.after_cancel(self._resize_after_id)
+        self._resize_after_id = self.root.after(150, self.reload_current_media)
 
     def load_gif(self, gif_path):
         self.current_gif = Image.open(gif_path)
@@ -164,12 +173,35 @@ class GifsFrame:
         self.root.after(self.interval * 1000, update_media)  # Initial scheduling
 
         while True:
-            for frame, duration in zip(self.frames, self.durations):
+            for idx, (frame, duration) in enumerate(zip(self.frames, self.durations)):
                 if not self.running:
                     break
+                self.current_frame_index = idx  # Track current frame
                 self.label.config(image=frame)
                 self.root.update()
                 time.sleep(duration)  # Use the frame-specific duration
+
+    def reload_current_media(self):
+        # Reload the current gif or mp4 with the new window size
+        if hasattr(self, "current_gif") and self.current_gif:
+            current_frame = (
+                self.current_frame_index if hasattr(self, "current_frame_index") else 0
+            )
+            self.load_gif(self.current_gif.filename)
+            # Show the same frame index after resizing
+            if self.frames:
+                self.label.config(
+                    image=self.frames[min(current_frame, len(self.frames) - 1)]
+                )
+        elif hasattr(self, "video_path") and self.video_path:
+            current_frame = (
+                self.current_frame_index if hasattr(self, "current_frame_index") else 0
+            )
+            self.load_mp4(self.video_path)
+            if self.frames:
+                self.label.config(
+                    image=self.frames[min(current_frame, len(self.frames) - 1)]
+                )
 
     def start(self):
         self.root.after(0, self.play_gifs)
@@ -179,13 +211,6 @@ class GifsFrame:
     def stop(self):
         self.running = False
         self.root.destroy()
-
-    def reload_current_media(self):
-        # Reload the current gif or mp4 with the new window size
-        if hasattr(self, "current_gif") and self.current_gif:
-            self.load_gif(self.current_gif.filename)
-        elif hasattr(self, "video_path") and self.video_path:
-            self.load_mp4(self.video_path)
 
 
 if __name__ == "__main__":
