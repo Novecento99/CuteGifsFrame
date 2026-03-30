@@ -160,12 +160,10 @@ class GifsFrame:
             if self.running:
                 self.load_random_frames()
                 # Press "Scroll Lock" key to prevent focus loss
-                # check if time is past 7 pm
-                current_time = time.localtime()
-                if current_time.tm_hour <= 19:  # 7 PM
-                    print("oki doki")
-                    pyautogui.press("scrolllock")
-                    pyautogui.press("scrolllock")
+                pyautogui.press("scrolllock")
+                print("Pressed Scroll Lock to maintain focus.")
+                pyautogui.press("scrolllock")
+                print(f"Next media will load in {self.interval} seconds...")
                 self.root.after(
                     self.interval * 1000, update_media
                 )  # Schedule next update
@@ -217,7 +215,7 @@ if __name__ == "__main__":
     folder_path = (
         r"mygifs"  # Replace with the path to your folder containing media files
     )
-    interval = 60  # Time in seconds before switching to the next media
+    interval = 30  # Time in seconds before switching to the next media
     player = GifsFrame(folder_path, interval)
     player.start()
 
